@@ -25,7 +25,7 @@ jobs:
 
       - name: Install browser
         run: |
-          pip install playwright==1.48.0
+          pip install playwright==1.52.0
           python -m playwright install --with-deps chromium
 
       - name: Read booking page
