@@ -6,6 +6,7 @@ data/snapshots.csv, and keeps the raw page outline in data/raw/ as a backup.
 import csv
 import re
 import sys
+import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -68,7 +69,7 @@ def read_day(page, date: str):
     except Exception:
         page.wait_for_timeout(8000)  # maybe fully booked or slow; read whatever is there
     page.wait_for_timeout(1500)
-    return page.locator("main").aria_snapshot()
+    return page.locator("body").first.aria_snapshot()
 
 
 def main():
@@ -90,15 +91,31 @@ def main():
     ok = True
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(timezone_id="America/Chicago")
+        page = browser.new_page(
+            timezone_id="America/Chicago",
+            viewport={"width": 1280, "height": 2400},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
+        )
         with CSV_PATH.open("a", newline="") as f:
             w = csv.writer(f)
             if new_file:
                 w.writerow(["captured", "date", "slot", "bay1", "bay2", "bay3", "bay4"])
             for date in dates:
-                outline = read_day(page, date)
                 RAW_DIR.mkdir(parents=True, exist_ok=True)
-                (RAW_DIR / f"{date}_at_{now:%Y%m%d_%H%M}.txt").write_text(outline)  # backup copy
+                stamp = f"{date}_at_{now:%Y%m%d_%H%M}"
+                try:
+                    outline = read_day(page, date)
+                except Exception:
+                    ok = False
+                    (RAW_DIR / f"{stamp}_ERROR.txt").write_text(traceback.format_exc())
+                    try:
+                        page.screenshot(path=str(RAW_DIR / f"{stamp}_ERROR.png"), full_page=True)
+                    except Exception:
+                        pass
+                    print(f"{date}: failed to read page; error saved.")
+                    traceback.print_exc()
+                    continue
+                (RAW_DIR / f"{stamp}.txt").write_text(outline)  # backup copy
                 rows = parse(outline)
                 if rows is None:
                     ok = False
