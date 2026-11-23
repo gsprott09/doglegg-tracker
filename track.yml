@@ -1,0 +1,42 @@
+name: Track bay bookings
+
+on:
+  schedule:
+    - cron: "*/30 0-5,10-23 * * *"   # every 30 min, 4am–midnight Chicago time (GitHub may run a few minutes late)
+  workflow_dispatch:          # adds a "Run workflow" button for testing
+
+permissions:
+  contents: write
+
+concurrency:
+  group: track
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser
+        run: |
+          pip install playwright==1.48.0
+          python -m playwright install --with-deps chromium
+
+      - name: Read booking page
+        run: python scrape.py
+
+      - name: Save results
+        if: always()
+        run: |
+          git config user.name "booking-tracker"
+          git config user.email "booking-tracker@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "Booking check $(TZ=America/Chicago date '+%Y-%m-%d %H:%M')"
+          git pull --rebase --quiet || true
+          git push
