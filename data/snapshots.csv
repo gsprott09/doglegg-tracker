@@ -240,3 +240,5 @@ captured,date,slot,bay1,bay2,bay3,bay4
 2026-11-25 22:31,2026-11-25,22:30,open,open,open,open
 2026-11-25 22:31,2026-11-25,23:00,open,open,open,open
 2026-11-25 22:31,2026-11-25,23:30,open,open,open,open
+2026-11-25 23:01,2026-11-25,23:00,booked,open,open,open
+2026-11-25 23:01,2026-11-25,23:30,open,open,open,open
