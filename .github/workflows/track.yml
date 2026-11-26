@@ -1,9 +1,12 @@
 name: Track bay bookings
 
+# GitHub often starts scheduled runs hours late on quiet repositories, so each run
+# stays open for up to ~5h45m and checks the booking page every 30 minutes itself.
+# The schedule below only makes sure a new run starts soon after the last one ends.
 on:
   schedule:
-    - cron: "*/30 0-5,10-23 * * *"   # every 30 min, 4am–midnight Chicago time (GitHub may run a few minutes late)
-  workflow_dispatch:          # adds a "Run workflow" button for testing
+    - cron: "7 * * * *"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,7 +18,7 @@ concurrency:
 jobs:
   record:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
 
@@ -28,15 +31,21 @@ jobs:
           pip install playwright==1.52.0
           python -m playwright install --with-deps chromium
 
-      - name: Read booking page
-        run: python scrape.py
-
-      - name: Save results
-        if: always()
+      - name: Check every 30 minutes
         run: |
           git config user.name "booking-tracker"
           git config user.email "booking-tracker@users.noreply.github.com"
-          git add data
-          git diff --cached --quiet || git commit -m "Booking check $(TZ=America/Chicago date '+%Y-%m-%d %H:%M')"
-          git pull --rebase --quiet || true
-          git push
+          stop=$(( $(date +%s) + 5*3600 + 30*60 ))
+          while true; do
+            python scrape.py || echo "check failed; will try again next time"
+            git add data
+            if ! git diff --cached --quiet; then
+              git commit -q -m "Booking check $(TZ=America/Chicago date '+%Y-%m-%d %H:%M')"
+              git pull --rebase -q || true
+              git push -q || echo "push failed; will retry with next check"
+            fi
+            now=$(date +%s)
+            next=$(( now - now % 1800 + 1800 + 60 ))   # one minute past the next :00 or :30
+            if [ "$next" -ge "$stop" ]; then break; fi
+            sleep $(( next - now ))
+          done
