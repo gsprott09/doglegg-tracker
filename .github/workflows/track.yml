@@ -1,8 +1,8 @@
 name: Track bay bookings
 
-# GitHub often starts scheduled runs hours late on quiet repositories, so each run
-# stays open for up to ~5h45m and checks the booking page every 30 minutes itself.
-# The schedule below only makes sure a new run starts soon after the last one ends.
+# GitHub sometimes starts scheduled runs hours late, so each run stays open for
+# ~5h30m and checks every 30 minutes itself. Runs are allowed to overlap so a late
+# start never leaves a gap; scrape.py skips any half-hour another run already recorded.
 on:
   schedule:
     - cron: "7 * * * *"
@@ -10,10 +10,6 @@ on:
 
 permissions:
   contents: write
-
-concurrency:
-  group: track
-  cancel-in-progress: false
 
 jobs:
   record:
@@ -36,16 +32,22 @@ jobs:
           git config user.name "booking-tracker"
           git config user.email "booking-tracker@users.noreply.github.com"
           stop=$(( $(date +%s) + 5*3600 + 30*60 ))
+          # spread overlapping runs a little so they don't all check at the same second
+          offset=$(( 60 + RANDOM % 240 ))
           while true; do
+            git pull --rebase -q || { git rebase --abort 2>/dev/null; git reset -q --hard origin/main; }
             python scrape.py || echo "check failed; will try again next time"
             git add data
             if ! git diff --cached --quiet; then
               git commit -q -m "Booking check $(TZ=America/Chicago date '+%Y-%m-%d %H:%M')"
-              git pull --rebase -q || true
-              git push -q || echo "push failed; will retry with next check"
+              for i in 1 2 3; do
+                git pull --rebase -q && git push -q && break
+                # another run saved the same half-hour first: keep theirs, drop ours
+                git rebase --abort 2>/dev/null; git reset -q --hard origin/main; break
+              done
             fi
             now=$(date +%s)
-            next=$(( now - now % 1800 + 1800 + 60 ))   # one minute past the next :00 or :30
+            next=$(( now - now % 1800 + 1800 + offset ))
             if [ "$next" -ge "$stop" ]; then break; fi
             sleep $(( next - now ))
           done
