@@ -1,7 +1,7 @@
 """Record which Doglegg Golf Huntsville bays are booked, from the public booking page.
 
-Reads only. Never books, signs in or clicks. Appends one row per time slot to
-data/snapshots.csv, and keeps the raw page outline in data/raw/ as a backup.
+Reads only. Never books, signs in or clicks. Writes one file per half-hour check to
+data/checks/ (older checks are in data/snapshots.csv), and keeps the raw page outline in data/raw/ as a backup.
 """
 import csv
 import re
@@ -18,7 +18,7 @@ TZ = ZoneInfo("America/Chicago")
 END_DATE = "2026-12-13"
 BAYS = 4
 DATA = Path(__file__).parent / "data"
-CSV_PATH = DATA / "snapshots.csv"
+CHECKS_DIR = DATA / "checks"  # one small file per half-hour check
 RAW_DIR = DATA / "raw"
 
 TIME_RE = re.compile(r"^\s*-\s*paragraph:\s*\"?(\d{1,2}:\d{2})\"?\s*$")
@@ -85,8 +85,13 @@ def main():
     if now.hour == 21:  # once a night, also record tomorrow's advance bookings
         dates.append((now + timedelta(days=1)).strftime("%Y-%m-%d"))
 
-    DATA.mkdir(exist_ok=True)
-    new_file = not CSV_PATH.exists()
+    # Several runs may overlap; each half-hour is recorded only once.
+    bucket = now.replace(minute=now.minute - now.minute % 30, second=0, microsecond=0)
+    CHECKS_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = CHECKS_DIR / f"{bucket:%Y-%m-%d_%H%M}.csv"
+    if out_path.exists():
+        print(f"Already recorded {bucket:%H:%M} by another run; skipping.")
+        return 0
     captured = now.strftime("%Y-%m-%d %H:%M")
     ok = True
     with sync_playwright() as p:
@@ -96,10 +101,9 @@ def main():
             viewport={"width": 1280, "height": 2400},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36",
         )
-        with CSV_PATH.open("a", newline="") as f:
+        with out_path.open("w", newline="") as f:
             w = csv.writer(f)
-            if new_file:
-                w.writerow(["captured", "date", "slot", "bay1", "bay2", "bay3", "bay4"])
+            w.writerow(["captured", "date", "slot", "bay1", "bay2", "bay3", "bay4"])
             for date in dates:
                 RAW_DIR.mkdir(parents=True, exist_ok=True)
                 stamp = f"{date}_at_{now:%Y%m%d_%H%M}"
@@ -126,6 +130,8 @@ def main():
                 booked = sum(st.count("x") for _, st in rows)
                 print(f"{date}: {len(rows)} slots, {booked} bay-slots booked.")
         browser.close()
+    if out_path.stat().st_size < 60:  # header only: nothing read, let another run try this half-hour
+        out_path.unlink()
     return 0 if ok else 1
 
 
