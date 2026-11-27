@@ -1,0 +1,62 @@
+- dialog "Cookies":
+  - paragraph: Cookies
+  - paragraph: We use cookies for analytics and marketing.
+  - link "Read more":
+    - /url: /en/terms/user
+  - button "Preferences"
+  - button "Accept"
+- main:
+  - link:
+    - /url: /en/venue/doglegg-golf-huntsville
+    - img
+  - button "Doglegg Golf Huntsville":
+    - paragraph: Doglegg Golf Huntsville
+  - link "Play":
+    - /url: /en/venue/doglegg-golf-huntsville?date=2026-11-26
+    - img
+    - text: Play
+  - link "Lessons":
+    - /url: /en/venue/doglegg-golf-huntsville/instruction?date=2026-11-26
+    - img
+    - text: Lessons
+  - link "Offers":
+    - /url: /en/venue/doglegg-golf-huntsville/offers/membership?date=2026-11-26
+    - img
+    - text: Offers
+  - link "Venue":
+    - /url: /en/venue/doglegg-golf-huntsville/info?date=2026-11-26
+    - img
+    - text: Venue
+  - button "Options":
+    - img
+  - paragraph: Thu
+  - paragraph: "26"
+  - paragraph: Nov
+  - paragraph: Fri
+  - paragraph: "27"
+  - paragraph: Nov
+  - paragraph: Sat
+  - paragraph: "28"
+  - paragraph: Nov
+  - paragraph: Sun
+  - paragraph: "29"
+  - paragraph: Nov
+  - paragraph: Mon
+  - paragraph: "30"
+  - paragraph: Nov
+  - heading "Book golf simulator at Doglegg Golf Huntsville" [level=1]
+  - heading "1 - The Caddie Golf Shop Bay" [level=3]
+  - paragraph: Uneekor Eye XO2 4K - Private Bay
+  - heading "2 - SPONSORSHIP AVAILABLE" [level=3]
+  - paragraph: Uneekor Eye XO2 4K - Private Bay
+  - heading "3 - Sponsorship Available" [level=3]
+  - paragraph: Uneekor Eye XO2 4K
+  - heading "4 - Sponsorship Available" [level=3]
+  - paragraph: Uneekor Eye XO2 4K
+  - paragraph: 11:30
+  - paragraph: PM
+  - paragraph: $15
+  - paragraph: $15
+  - paragraph: $15
+  - paragraph: $15
+- alert
